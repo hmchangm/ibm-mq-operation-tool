@@ -11,6 +11,8 @@ import jakarta.jms.Message
 import jakarta.jms.Queue
 import jakarta.jms.TextMessage
 
+private const val DEFAULT_RECEIVE_TIMEOUT_MS = 500L
+
 @ApplicationScoped
 class IbmMqGateway : MqGateway {
     override fun browse(target: MqTarget, limit: Int): List<MessageRow> {
@@ -39,7 +41,7 @@ class IbmMqGateway : MqGateway {
             val selector = "JMSMessageID = '${jmsMessageId.selectorLiteral()}'"
 
             context.createConsumer(queue, selector).use { consumer ->
-                consumer.receiveNoWait() != null
+                consumer.receive(DEFAULT_RECEIVE_TIMEOUT_MS) != null
             }
         }
 
@@ -60,7 +62,7 @@ class IbmMqGateway : MqGateway {
             context.createConsumer(queue).use { consumer ->
                 var removed = 0
 
-                while (consumer.receiveNoWait() != null) {
+                while (consumer.receive(DEFAULT_RECEIVE_TIMEOUT_MS) != null) {
                     removed += 1
                 }
 
