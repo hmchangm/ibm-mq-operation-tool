@@ -1,10 +1,38 @@
 package com.acme.mqops.config
 
 import jakarta.enterprise.context.ApplicationScoped
+import jakarta.inject.Inject
+import java.util.Optional
 
 @ApplicationScoped
-class MqTopologyService(private val config: MqTopologyView) {
-    fun queueManagers(): Map<String, QueueManagerView> = config.queueManagers()
+class MqTopologyService {
+    private val config: MqTopologyView
+
+    @Inject
+    constructor(config: MqTopologyConfig) {
+        this.config = config
+    }
+
+    constructor(config: MqTopologyView) {
+        this.config = config
+    }
+
+    fun queueManagers(): Map<String, MqQueueManagerTopology> =
+        config.queueManagers().mapValues { (queueManagerKey, queueManager) ->
+            MqQueueManagerTopology(
+                key = queueManagerKey,
+                name = queueManager.name().orElse(queueManagerKey),
+                host = queueManager.host(),
+                port = queueManager.port(),
+                channels = queueManager.channels().mapValues { (channelKey, channel) ->
+                    MqChannelTopology(
+                        key = channelKey,
+                        name = channel.name(),
+                        allowedQueues = channel.allowedQueues()
+                    )
+                }
+            )
+        }
 
     fun browseLimit(): Int = config.browseLimit()
 
@@ -27,8 +55,15 @@ class MqTopologyService(private val config: MqTopologyView) {
             channelKey = channelKey,
             channelName = channel.name(),
             queueName = queueName,
-            username = channel.username()?.takeIf { it.isNotBlank() },
-            password = channel.password()?.takeIf { it.isNotBlank() }
+            username = channel.username().notBlankOrNull(),
+            password = channel.password().notBlankOrNull()
         )
     }
+
+    private fun Optional<String>.notBlankOrNull(): String? =
+        if (isPresent) {
+            get().takeIf { it.isNotBlank() }
+        } else {
+            null
+        }
 }
