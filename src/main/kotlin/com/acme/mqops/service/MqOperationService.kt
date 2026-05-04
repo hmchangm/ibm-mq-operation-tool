@@ -6,6 +6,7 @@ import com.acme.mqops.mq.MessageGoneException
 import com.acme.mqops.mq.MessageRow
 import com.acme.mqops.mq.MqGateway
 import jakarta.enterprise.context.ApplicationScoped
+import java.util.concurrent.CancellationException
 
 @ApplicationScoped
 class MqOperationService(
@@ -24,6 +25,11 @@ class MqOperationService(
             audit.delete(user, target, jmsMessageId, "success")
         } catch (ex: MessageGoneException) {
             throw ex
+        } catch (ex: InterruptedException) {
+            Thread.currentThread().interrupt()
+            throw ex
+        } catch (ex: CancellationException) {
+            throw ex
         } catch (ex: Exception) {
             audit.delete(user, target, jmsMessageId, "failure", errorSummary(ex))
             throw ex
@@ -34,6 +40,11 @@ class MqOperationService(
         try {
             gateway.putText(target, body)
             audit.put(user, target, "success")
+        } catch (ex: InterruptedException) {
+            Thread.currentThread().interrupt()
+            throw ex
+        } catch (ex: CancellationException) {
+            throw ex
         } catch (ex: Exception) {
             audit.put(user, target, "failure", errorSummary(ex))
             throw ex
@@ -46,6 +57,11 @@ class MqOperationService(
             removedCount = gateway.clean(target)
             audit.clean(user, target, removedCount, "success")
             return removedCount
+        } catch (ex: InterruptedException) {
+            Thread.currentThread().interrupt()
+            throw ex
+        } catch (ex: CancellationException) {
+            throw ex
         } catch (ex: Exception) {
             audit.clean(user, target, removedCount, "failure", errorSummary(ex))
             throw ex

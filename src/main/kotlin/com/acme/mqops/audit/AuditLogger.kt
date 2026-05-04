@@ -16,30 +16,47 @@ class StructuredAuditLogger : AuditLogger {
     private val log = Logger.getLogger("mqops.audit")
 
     override fun delete(user: String, target: MqTarget, messageId: String, result: String, error: String?) {
-        log.info(auditLine(user, "delete", target, result, "messageId=$messageId", 0, error))
+        log.info(AuditLineFormatter.format(Instant.now(), user, "delete", target, messageId, 0, result, error))
     }
 
     override fun put(user: String, target: MqTarget, result: String, error: String?) {
-        log.info(auditLine(user, "put", target, result, "messageId=", 0, error))
+        log.info(AuditLineFormatter.format(Instant.now(), user, "put", target, null, 0, result, error))
     }
 
     override fun clean(user: String, target: MqTarget, removedCount: Int, result: String, error: String?) {
-        log.info(auditLine(user, "clean", target, result, "messageId=", removedCount, error))
+        log.info(AuditLineFormatter.format(Instant.now(), user, "clean", target, null, removedCount, result, error))
     }
+}
 
-    private fun auditLine(
+object AuditLineFormatter {
+    fun format(
+        timestamp: Instant,
         user: String,
         operation: String,
         target: MqTarget,
-        result: String,
-        messagePart: String,
+        messageId: String?,
         removedCount: Int,
+        result: String,
         error: String?
     ): String {
-        val errorPart = sanitizeErrorSummary(error)
-        return "event=mq_operation timestamp=${Instant.now()} user=$user operation=$operation " +
-            "queueManager=${target.queueManagerName} channel=${target.channelName} queue=${target.queueName} " +
-            "$messagePart removedCount=$removedCount result=$result errorType=$errorPart"
+        val fields = mutableListOf(
+            "event" to "mq_operation",
+            "timestamp" to timestamp.toString(),
+            "user" to user,
+            "operation" to operation,
+            "queueManager" to target.queueManagerName,
+            "channel" to target.channelName,
+            "queue" to target.queueName,
+            "removedCount" to removedCount,
+            "result" to result,
+            "errorType" to sanitizeErrorSummary(error)
+        )
+        if (messageId != null) {
+            fields.add("messageId" to messageId)
+        }
+        return fields.joinToString(prefix = "{", postfix = "}") { (key, value) ->
+            "\"${escapeJson(key)}\":${jsonValue(value)}"
+        }
     }
 
     private fun sanitizeErrorSummary(error: String?): String {
@@ -49,7 +66,32 @@ class StructuredAuditLogger : AuditLogger {
         return if (errorSummaryPattern.matches(error)) error else "RuntimeException"
     }
 
-    private companion object {
-        private val errorSummaryPattern = Regex("[A-Za-z][A-Za-z0-9_.]*(Exception|Error)")
+    private fun jsonValue(value: Any): String = when (value) {
+        is Number -> value.toString()
+        else -> "\"${escapeJson(value.toString())}\""
     }
+
+    private fun escapeJson(value: String): String = buildString {
+        value.forEach { char ->
+            when (char) {
+                '\\' -> append("\\\\")
+                '"' -> append("\\\"")
+                '\b' -> append("\\b")
+                '\u000C' -> append("\\f")
+                '\n' -> append("\\n")
+                '\r' -> append("\\r")
+                '\t' -> append("\\t")
+                else -> {
+                    if (char < ' ') {
+                        append("\\u")
+                        append(char.code.toString(16).padStart(4, '0'))
+                    } else {
+                        append(char)
+                    }
+                }
+            }
+        }
+    }
+
+    private val errorSummaryPattern = Regex("[A-Za-z0-9_.]*(Exception|Error)")
 }

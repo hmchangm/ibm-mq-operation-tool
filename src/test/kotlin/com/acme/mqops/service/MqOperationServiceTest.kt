@@ -7,8 +7,11 @@ import com.acme.mqops.mq.MessageRow
 import com.acme.mqops.mq.MqGateway
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertFalse
+import org.junit.jupiter.api.Assertions.assertSame
+import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Assertions.assertThrows
 import org.junit.jupiter.api.Test
+import java.util.concurrent.CancellationException
 
 class MqOperationServiceTest {
     private val target = MqTarget("QM1", "QM1", "host", 1414, "APP", "APP.SVRCONN", "DEV.QUEUE.1", null, null)
@@ -64,6 +67,41 @@ class MqOperationServiceTest {
 
         assertEquals(exception, thrown)
         assertEquals("put:failure:alice:DEV.QUEUE.1:Exception", audit.entries.single())
+    }
+
+    @Test
+    fun `put interrupted failure restores interrupt status and is not audited`() {
+        val audit = RecordingAuditLogger()
+        val exception = InterruptedException("interrupted while writing")
+        val gateway = FakeGateway(putFailure = exception)
+        val service = MqOperationService(gateway, audit)
+
+        try {
+            val thrown = assertThrows(InterruptedException::class.java) {
+                service.putText("alice", target, "body")
+            }
+
+            assertSame(exception, thrown)
+            assertTrue(Thread.currentThread().isInterrupted)
+            assertEquals(emptyList<String>(), audit.entries)
+        } finally {
+            Thread.interrupted()
+        }
+    }
+
+    @Test
+    fun `put cancellation failure is not audited`() {
+        val audit = RecordingAuditLogger()
+        val exception = CancellationException("cancelled while writing")
+        val gateway = FakeGateway(putFailure = exception)
+        val service = MqOperationService(gateway, audit)
+
+        val thrown = assertThrows(CancellationException::class.java) {
+            service.putText("alice", target, "body")
+        }
+
+        assertSame(exception, thrown)
+        assertEquals(emptyList<String>(), audit.entries)
     }
 
     @Test
