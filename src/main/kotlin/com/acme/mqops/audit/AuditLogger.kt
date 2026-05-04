@@ -36,9 +36,20 @@ class StructuredAuditLogger : AuditLogger {
         removedCount: Int,
         error: String?
     ): String {
-        val errorPart = error?.replace('\n', ' ') ?: ""
+        val errorPart = sanitizeErrorSummary(error)
         return "event=mq_operation timestamp=${Instant.now()} user=$user operation=$operation " +
             "queueManager=${target.queueManagerName} channel=${target.channelName} queue=${target.queueName} " +
-            "$messagePart removedCount=$removedCount result=$result error=\"$errorPart\""
+            "$messagePart removedCount=$removedCount result=$result errorType=$errorPart"
+    }
+
+    private fun sanitizeErrorSummary(error: String?): String {
+        if (error.isNullOrBlank()) {
+            return ""
+        }
+        return if (errorSummaryPattern.matches(error)) error else "RuntimeException"
+    }
+
+    private companion object {
+        private val errorSummaryPattern = Regex("[A-Za-z][A-Za-z0-9_.]*(Exception|Error)")
     }
 }

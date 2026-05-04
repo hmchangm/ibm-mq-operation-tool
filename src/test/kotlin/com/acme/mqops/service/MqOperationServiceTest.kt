@@ -6,6 +6,7 @@ import com.acme.mqops.mq.MessageGoneException
 import com.acme.mqops.mq.MessageRow
 import com.acme.mqops.mq.MqGateway
 import org.junit.jupiter.api.Assertions.assertEquals
+import org.junit.jupiter.api.Assertions.assertFalse
 import org.junit.jupiter.api.Assertions.assertThrows
 import org.junit.jupiter.api.Test
 
@@ -35,6 +36,22 @@ class MqOperationServiceTest {
     }
 
     @Test
+    fun `put failure audit does not include submitted body from exception message`() {
+        val audit = RecordingAuditLogger()
+        val body = "sensitive message body"
+        val gateway = FakeGateway(putFailure = IllegalStateException("failed to write $body"))
+        val service = MqOperationService(gateway, audit)
+
+        assertThrows(IllegalStateException::class.java) {
+            service.putText("alice", target, body)
+        }
+
+        val entry = audit.entries.single()
+        assertEquals("put:failure:alice:DEV.QUEUE.1:IllegalStateException", entry)
+        assertFalse(entry.contains(body))
+    }
+
+    @Test
     fun `delete missing message throws message gone and audits not found`() {
         val audit = RecordingAuditLogger()
         val gateway = FakeGateway(deleteMissing = true)
@@ -61,7 +78,8 @@ class MqOperationServiceTest {
 
     private class FakeGateway(
         private val deleteMissing: Boolean = false,
-        private val cleanCount: Int = 0
+        private val cleanCount: Int = 0,
+        private val putFailure: RuntimeException? = null
     ) : MqGateway {
         var lastBrowseLimit: Int = 0
         var lastPutBody: String = ""
@@ -74,6 +92,7 @@ class MqOperationServiceTest {
         override fun delete(target: MqTarget, jmsMessageId: String): Boolean = !deleteMissing
 
         override fun putText(target: MqTarget, body: String) {
+            putFailure?.let { throw it }
             lastPutBody = body
         }
 
@@ -87,7 +106,8 @@ class MqOperationServiceTest {
         }
 
         override fun put(user: String, target: MqTarget, result: String, error: String?) {
-            entries.add("put:$result:$user:${target.queueName}")
+            val errorPart = error?.let { ":$it" }.orEmpty()
+            entries.add("put:$result:$user:${target.queueName}$errorPart")
         }
 
         override fun clean(user: String, target: MqTarget, removedCount: Int, result: String, error: String?) {
