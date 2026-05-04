@@ -16,54 +16,44 @@ class MqOperationService(
     fun browse(user: String, target: MqTarget, limit: Int): List<MessageRow> = gateway.browse(target, limit)
 
     fun delete(user: String, target: MqTarget, jmsMessageId: String) {
-        try {
+        withMqCall({ error -> audit.delete(user, target, jmsMessageId, "failure", error) }) {
             val deleted = gateway.delete(target, jmsMessageId)
             if (!deleted) {
                 audit.delete(user, target, jmsMessageId, "not_found")
                 throw MessageGoneException("message no longer available")
             }
             audit.delete(user, target, jmsMessageId, "success")
-        } catch (ex: MessageGoneException) {
-            throw ex
-        } catch (ex: InterruptedException) {
-            Thread.currentThread().interrupt()
-            throw ex
-        } catch (ex: CancellationException) {
-            throw ex
-        } catch (ex: Exception) {
-            audit.delete(user, target, jmsMessageId, "failure", errorSummary(ex))
-            throw ex
         }
     }
 
     fun putText(user: String, target: MqTarget, body: String) {
-        try {
+        withMqCall({ error -> audit.put(user, target, "failure", error) }) {
             gateway.putText(target, body)
             audit.put(user, target, "success")
-        } catch (ex: InterruptedException) {
-            Thread.currentThread().interrupt()
-            throw ex
-        } catch (ex: CancellationException) {
-            throw ex
-        } catch (ex: Exception) {
-            audit.put(user, target, "failure", errorSummary(ex))
-            throw ex
         }
     }
 
     fun clean(user: String, target: MqTarget): Int {
         var removedCount = 0
-        try {
+        withMqCall({ error -> audit.clean(user, target, removedCount, "failure", error) }) {
             removedCount = gateway.clean(target)
             audit.clean(user, target, removedCount, "success")
-            return removedCount
+        }
+        return removedCount
+    }
+
+    private inline fun withMqCall(onFailure: (String) -> Unit, block: () -> Unit) {
+        try {
+            block()
         } catch (ex: InterruptedException) {
             Thread.currentThread().interrupt()
             throw ex
         } catch (ex: CancellationException) {
             throw ex
+        } catch (ex: MessageGoneException) {
+            throw ex
         } catch (ex: Exception) {
-            audit.clean(user, target, removedCount, "failure", errorSummary(ex))
+            onFailure(errorSummary(ex))
             throw ex
         }
     }
