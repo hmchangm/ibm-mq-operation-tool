@@ -26,4 +26,14 @@ class QueueOpsResourceTest {
             .body(containsString("IBM MQ Operation Tool"))
             .body(containsString("QM1"))
     }
+
+    @Test
+    @TestSecurity(user = "alice")
+    fun `workspace page load does not perform MQ operation`() {
+        given()
+            .`when`().get("/")
+            .then()
+            .statusCode(200)
+            .body(containsString("IBM MQ Operation Tool"))
+    }
 }
