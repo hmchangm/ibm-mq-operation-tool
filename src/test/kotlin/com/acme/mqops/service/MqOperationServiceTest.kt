@@ -52,6 +52,21 @@ class MqOperationServiceTest {
     }
 
     @Test
+    fun `put non runtime failure is audited with sanitized type and rethrown`() {
+        val audit = RecordingAuditLogger()
+        val exception = Exception("checked failure includes sensitive body")
+        val gateway = FakeGateway(putFailure = exception)
+        val service = MqOperationService(gateway, audit)
+
+        val thrown = assertThrows(Exception::class.java) {
+            service.putText("alice", target, "sensitive body")
+        }
+
+        assertEquals(exception, thrown)
+        assertEquals("put:failure:alice:DEV.QUEUE.1:Exception", audit.entries.single())
+    }
+
+    @Test
     fun `delete missing message throws message gone and audits not found`() {
         val audit = RecordingAuditLogger()
         val gateway = FakeGateway(deleteMissing = true)
@@ -79,7 +94,7 @@ class MqOperationServiceTest {
     private class FakeGateway(
         private val deleteMissing: Boolean = false,
         private val cleanCount: Int = 0,
-        private val putFailure: RuntimeException? = null
+        private val putFailure: Exception? = null
     ) : MqGateway {
         var lastBrowseLimit: Int = 0
         var lastPutBody: String = ""

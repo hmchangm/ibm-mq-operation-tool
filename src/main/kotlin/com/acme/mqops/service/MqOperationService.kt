@@ -24,7 +24,7 @@ class MqOperationService(
             audit.delete(user, target, jmsMessageId, "success")
         } catch (ex: MessageGoneException) {
             throw ex
-        } catch (ex: RuntimeException) {
+        } catch (ex: Exception) {
             audit.delete(user, target, jmsMessageId, "failure", errorSummary(ex))
             throw ex
         }
@@ -34,7 +34,7 @@ class MqOperationService(
         try {
             gateway.putText(target, body)
             audit.put(user, target, "success")
-        } catch (ex: RuntimeException) {
+        } catch (ex: Exception) {
             audit.put(user, target, "failure", errorSummary(ex))
             throw ex
         }
@@ -46,11 +46,11 @@ class MqOperationService(
             removedCount = gateway.clean(target)
             audit.clean(user, target, removedCount, "success")
             return removedCount
-        } catch (ex: RuntimeException) {
+        } catch (ex: Exception) {
             audit.clean(user, target, removedCount, "failure", errorSummary(ex))
             throw ex
         }
     }
 
-    private fun errorSummary(ex: RuntimeException): String = ex.javaClass.simpleName.ifBlank { "RuntimeException" }
+    private fun errorSummary(ex: Exception): String = ex.javaClass.simpleName.ifBlank { "Exception" }
 }
