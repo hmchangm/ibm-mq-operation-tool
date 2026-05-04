@@ -3,6 +3,7 @@ package com.acme.mqops.config
 import io.quarkus.runtime.annotations.StaticInitSafe
 import io.smallrye.config.ConfigMapping
 import jakarta.enterprise.context.ApplicationScoped
+import java.util.Optional
 
 interface MqTopologyView {
     fun browseLimit(): Int
@@ -11,6 +12,7 @@ interface MqTopologyView {
 }
 
 interface QueueManagerView {
+    fun name(): Optional<String>
     fun host(): String
     fun port(): Int
     fun channels(): Map<String, ChannelView>
@@ -45,8 +47,10 @@ data class TestMqTopologyConfig(
 data class TestQueueManagerConfig(
     private val host: String,
     private val port: Int,
-    private val channels: Map<String, TestChannelConfig>
+    private val channels: Map<String, TestChannelConfig>,
+    private val name: Optional<String> = Optional.empty()
 ) : QueueManagerView {
+    override fun name() = name
     override fun host() = host
     override fun port() = port
     override fun channels(): Map<String, ChannelView> = channels

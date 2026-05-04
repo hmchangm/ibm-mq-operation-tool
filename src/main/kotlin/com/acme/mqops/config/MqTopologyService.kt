@@ -21,7 +21,7 @@ class MqTopologyService(private val config: MqTopologyView) {
 
         return MqTarget(
             queueManagerKey = queueManagerKey,
-            queueManagerName = queueManagerKey,
+            queueManagerName = queueManager.name().orElse(queueManagerKey),
             host = queueManager.host(),
             port = queueManager.port(),
             channelKey = channelKey,
