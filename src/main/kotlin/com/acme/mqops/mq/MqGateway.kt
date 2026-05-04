@@ -2,6 +2,9 @@ package com.acme.mqops.mq
 
 import com.acme.mqops.config.MqTarget
 
+const val TEXT_PREVIEW_LIMIT = 240
+const val UNSUPPORTED_PREVIEW = "[payload preview unsupported]"
+
 data class MessageRow(
     val jmsMessageId: String,
     val correlationId: String?,
