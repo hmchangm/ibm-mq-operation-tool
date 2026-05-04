@@ -16,6 +16,7 @@ Version 1 includes:
 - No app-level role control. Any authenticated user can use all operations.
 - Configured queue topology: queue manager -> channel -> allowed queues.
 - Optional IBM MQ username/password per configured channel.
+- Lazy IBM MQ connection: do not connect to MQ during application startup or queue target selection.
 - Browse the first configured limit of messages from a selected queue.
 - Show message metadata and a short `TextMessage` payload preview in the browse table.
 - Delete a selected message directly from the browse table after confirmation.
@@ -95,6 +96,8 @@ UI resource classes do not directly use IBM MQ JMS APIs. They validate request i
 
 The MQ operation service owns browse, delete, put, and clean behavior. IBM MQ connection setup is isolated behind a connection factory builder so that credentials, host, port, channel, queue manager, and transport settings remain centralized.
 
+IBM MQ connections are lazy. Application startup and page rendering validate only local configuration. The app creates an MQ connection only when a user runs browse, delete, put, or clean, and closes resources after that operation completes.
+
 ## Configuration Model
 
 Configuration defines a fixed topology of queue managers, channels, and queues. A channel may omit MQ credentials if the queue manager allows unauthenticated connection for that channel.
@@ -126,6 +129,8 @@ The implementation may use Quarkus `@ConfigMapping` with Kotlin data classes. Se
 ## MQ Behavior
 
 All MQ operations use IBM MQ JMS factory APIs. The application will create an IBM MQ connection factory for the selected queue manager and channel using `JmsFactoryFactory` and `WMQConstants`.
+
+Connection attempts happen only inside explicit MQ operations. Selecting a queue manager, channel, or queue in the UI must not connect to IBM MQ.
 
 ### Browse
 
