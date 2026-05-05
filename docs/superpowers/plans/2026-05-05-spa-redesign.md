@@ -59,28 +59,137 @@
 
 ---
 
-## Task 1: Fix IbmMqGateway — use string literal for MQ provider
+## Task 1: Fix IbmMqGateway — switch to javax.jms and wmq_provider string literal
 
-The `WMQConstants.WMQ_PROVIDER` constant resolves to `"wmq_provider"` but using the constant requires the newer `jakarta.jms`-namespaced WMQ client. Using the string literal directly is compatible with older MQ servers.
+`com.ibm.mq.allclient:9.4.2.1` bundles `javax.jms.*` (not `jakarta.jms.*`) and its IBM factory classes live under `com.ibm.msg.client.jms.*` (not `com.ibm.msg.client.jakarta.jms.*`). All imports need updating. The `WMQConstants.WMQ_PROVIDER` constant is also replaced with the string literal `"wmq_provider"` for compatibility with older MQ servers.
 
 **Files:**
 - Modify: `src/main/kotlin/com/acme/mqops/mq/IbmMqGateway.kt`
 
-- [ ] **Step 1: Change the provider string in `createContext`**
+- [ ] **Step 1: Replace the entire file with corrected imports and provider string**
 
-In `IbmMqGateway.kt` line 74–76, change:
+Replace `src/main/kotlin/com/acme/mqops/mq/IbmMqGateway.kt` with:
+
 ```kotlin
-private fun createContext(target: MqTarget): JMSContext {
-    val factory = JmsFactoryFactory
-        .getInstance(WMQConstants.WMQ_PROVIDER)
+package com.acme.mqops.mq
+
+import com.acme.mqops.config.MqTarget
+import com.ibm.msg.client.jms.JmsConnectionFactory
+import com.ibm.msg.client.jms.JmsFactoryFactory
+import com.ibm.msg.client.wmq.WMQConstants
+import jakarta.enterprise.context.ApplicationScoped
+import javax.jms.DeliveryMode
+import javax.jms.JMSContext
+import javax.jms.Message
+import javax.jms.Queue
+import javax.jms.TextMessage
+
+private const val DEFAULT_RECEIVE_TIMEOUT_MS = 500L
+
+@ApplicationScoped
+class IbmMqGateway : MqGateway {
+    override fun browse(target: MqTarget, limit: Int): List<MessageRow> {
+        if (limit <= 0) {
+            return emptyList()
+        }
+
+        return createContext(target).use { context ->
+            val queue = context.queue(target)
+            context.createBrowser(queue).use { browser ->
+                val rows = mutableListOf<MessageRow>()
+                val messages = browser.enumeration
+
+                while (messages.hasMoreElements() && rows.size < limit) {
+                    rows += (messages.nextElement() as Message).toRow()
+                }
+
+                rows
+            }
+        }
+    }
+
+    override fun delete(target: MqTarget, jmsMessageId: String): Boolean =
+        createContext(target).use { context ->
+            val queue = context.queue(target)
+            val selector = "JMSMessageID = '${jmsMessageId.selectorLiteral()}'"
+
+            context.createConsumer(queue, selector).use { consumer ->
+                consumer.receive(DEFAULT_RECEIVE_TIMEOUT_MS) != null
+            }
+        }
+
+    override fun putText(target: MqTarget, body: String) {
+        createContext(target).use { context ->
+            val queue = context.queue(target)
+            val message = context.createTextMessage(body)
+
+            context.createProducer()
+                .setDeliveryMode(DeliveryMode.PERSISTENT)
+                .send(queue, message)
+        }
+    }
+
+    override fun clean(target: MqTarget): Int =
+        createContext(target).use { context ->
+            val queue = context.queue(target)
+            context.createConsumer(queue).use { consumer ->
+                var removed = 0
+
+                while (consumer.receive(DEFAULT_RECEIVE_TIMEOUT_MS) != null) {
+                    removed += 1
+                }
+
+                removed
+            }
+        }
+
+    private fun createContext(target: MqTarget): JMSContext {
+        val factory = JmsFactoryFactory
+            .getInstance("wmq_provider")
+            .createConnectionFactory()
+            .applyTarget(target)
+
+        return if (target.username != null && target.password != null) {
+            factory.createContext(target.username, target.password)
+        } else {
+            factory.createContext()
+        }
+    }
+
+    private fun JmsConnectionFactory.applyTarget(target: MqTarget): JmsConnectionFactory {
+        setStringProperty(WMQConstants.WMQ_HOST_NAME, target.host)
+        setIntProperty(WMQConstants.WMQ_PORT, target.port)
+        setStringProperty(WMQConstants.WMQ_CHANNEL, target.channelName)
+        setIntProperty(WMQConstants.WMQ_CONNECTION_MODE, WMQConstants.WMQ_CM_CLIENT)
+        setStringProperty(WMQConstants.WMQ_QUEUE_MANAGER, target.queueManagerName)
+        return this
+    }
+
+    private fun JMSContext.queue(target: MqTarget): Queue = createQueue(target.queueName)
+
+    private fun Message.toRow(): MessageRow =
+        MessageRow(
+            jmsMessageId = jmsMessageID,
+            correlationId = jmsCorrelationID,
+            timestamp = jmsTimestamp.takeUnless { it == 0L },
+            expiration = jmsExpiration.takeUnless { it == 0L },
+            priority = jmsPriority,
+            type = jmsType ?: javaClass.simpleName,
+            preview = preview()
+        )
+
+    private fun Message.preview(): String =
+        if (this is TextMessage) {
+            text?.take(TEXT_PREVIEW_LIMIT).orEmpty()
+        } else {
+            UNSUPPORTED_PREVIEW
+        }
+
+    private fun String.selectorLiteral(): String = replace("'", "''")
+}
 ```
-to:
-```kotlin
-private fun createContext(target: MqTarget): JMSContext {
-    val factory = JmsFactoryFactory
-        .getInstance("wmq_provider")
-```
-Leave the `WMQConstants` import — it is still used for `WMQ_HOST_NAME`, `WMQ_PORT`, `WMQ_CHANNEL`, `WMQ_CONNECTION_MODE`, `WMQ_CM_CLIENT`, `WMQ_QUEUE_MANAGER` in `applyTarget`.
+
+Note: `javax.jms.Message` exposes JMS properties as Kotlin properties (e.g. `jmsMessageID`, `jmsCorrelationID`) rather than Java getter methods, so the `toRow()` implementation uses property syntax.
 
 - [ ] **Step 2: Build to confirm no compile errors**
 
@@ -89,11 +198,18 @@ mvn compile -q
 ```
 Expected: `BUILD SUCCESS`
 
-- [ ] **Step 3: Commit**
+- [ ] **Step 3: Run tests**
+
+```bash
+mvn test
+```
+Expected: all tests pass.
+
+- [ ] **Step 4: Commit**
 
 ```bash
 git add src/main/kotlin/com/acme/mqops/mq/IbmMqGateway.kt
-git commit -m "fix: use string literal wmq_provider instead of WMQConstants"
+git commit -m "fix: switch IbmMqGateway to javax.jms and wmq_provider string literal"
 ```
 
 ---
