@@ -10,9 +10,10 @@ class MqContainerResource : QuarkusTestResourceLifecycleManager {
     private lateinit var container: GenericContainer<*>
 
     override fun start(): Map<String, String> {
-        container = GenericContainer<Nothing>("icr.io/ibm-messaging/mq:latest")
+        container = MqContainer("icr.io/ibm-messaging/mq:latest")
             .withEnv("LICENSE", "accept")
             .withEnv("MQ_QMGR_NAME", "QM1")
+            .withEnv("MQ_APP_PASSWORD", "passw0rd")
             .withExposedPorts(1414)
             .withStartupTimeout(Duration.ofMinutes(3))
             .waitingFor(
@@ -37,3 +38,5 @@ class MqContainerResource : QuarkusTestResourceLifecycleManager {
         if (::container.isInitialized) container.stop()
     }
 }
+
+private class MqContainer(imageName: String) : GenericContainer<MqContainer>(imageName)

@@ -1,6 +1,7 @@
 package com.acme.mqops.mq
 
 import com.acme.mqops.config.MqTarget
+import com.ibm.msg.client.jms.JmsConstants
 import com.ibm.msg.client.jms.JmsConnectionFactory
 import com.ibm.msg.client.jms.JmsFactoryFactory
 import com.ibm.msg.client.wmq.WMQConstants
@@ -72,7 +73,7 @@ class IbmMqGateway : MqGateway {
 
     private fun createContext(target: MqTarget): JMSContext {
         val factory = JmsFactoryFactory
-            .getInstance("wmq_provider")
+            .getInstance(JmsConstants.WMQ_PROVIDER)
             .createConnectionFactory()
             .applyTarget(target)
 

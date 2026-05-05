@@ -34,8 +34,8 @@ class IbmMqGatewayTest {
             channelKey = "DEV_SVRCONN",
             channelName = "DEV.APP.SVRCONN",
             queueName = "DEV.QUEUE.1",
-            username = null,
-            password = null
+            username = "app",
+            password = "passw0rd"
         )
         gateway.clean(target)
     }
