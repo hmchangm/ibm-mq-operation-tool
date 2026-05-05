@@ -4,7 +4,6 @@ import io.quarkus.arc.profile.IfBuildProfile
 import io.quarkus.security.identity.IdentityProviderManager
 import io.quarkus.security.identity.SecurityIdentity
 import io.quarkus.security.identity.request.AuthenticationRequest
-import io.quarkus.security.identity.request.TrustedAuthenticationRequest
 import io.quarkus.security.runtime.QuarkusSecurityIdentity
 import io.quarkus.vertx.http.runtime.security.ChallengeData
 import io.quarkus.vertx.http.runtime.security.HttpAuthenticationMechanism
@@ -29,5 +28,5 @@ class DevHttpAuthMechanism : HttpAuthenticationMechanism {
         Uni.createFrom().nullItem()
 
     override fun getCredentialTypes(): Set<Class<out AuthenticationRequest>> =
-        setOf(TrustedAuthenticationRequest::class.java)
+        emptySet()
 }
