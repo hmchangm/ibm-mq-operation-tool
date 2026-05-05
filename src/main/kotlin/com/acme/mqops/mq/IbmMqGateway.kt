@@ -72,7 +72,7 @@ class IbmMqGateway : MqGateway {
 
     private fun createContext(target: MqTarget): JMSContext {
         val factory = JmsFactoryFactory
-            .getInstance(WMQConstants.WMQ_PROVIDER)
+            .getInstance("wmq_provider")
             .createConnectionFactory()
             .applyTarget(target)
 
