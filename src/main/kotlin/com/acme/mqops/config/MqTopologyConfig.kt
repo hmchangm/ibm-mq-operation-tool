@@ -22,7 +22,6 @@ interface ChannelView {
     fun name(): String
     fun username(): Optional<String>
     fun password(): Optional<String>
-    fun allowedQueues(): List<String>
 }
 
 data class MqQueueManagerTopology(
@@ -35,8 +34,7 @@ data class MqQueueManagerTopology(
 
 data class MqChannelTopology(
     val key: String,
-    val name: String,
-    val allowedQueues: List<String>
+    val name: String
 )
 
 @StaticInitSafe

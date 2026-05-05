@@ -11,15 +11,15 @@ class MqTopologyServiceTest {
         browseLimit = 100,
         receiveTimeoutMs = 500,
         queueManagers = mapOf(
-            "QM1" to TestQueueManagerConfig(
+            "PRIMARY" to TestQueueManagerConfig(
+                name = Optional.of("QM1"),
                 host = "mq.example.test",
                 port = 1414,
                 channels = mapOf(
                     "APP_SVRCONN" to TestChannelConfig(
                         name = "APP.SVRCONN",
                         username = Optional.empty(),
-                        password = Optional.empty(),
-                        allowedQueues = listOf("DEV.QUEUE.1", "DEV.QUEUE.2")
+                        password = Optional.empty()
                     )
                 )
             )
@@ -27,77 +27,30 @@ class MqTopologyServiceTest {
     )
 
     @Test
-    fun `resolve accepts configured queue manager channel and queue`() {
+    fun `resolve accepts any queue name for configured queue manager and channel`() {
         val service = MqTopologyService(config)
 
-        val target = service.resolve("QM1", "APP_SVRCONN", "DEV.QUEUE.2")
+        val target = service.resolve("PRIMARY", "APP_SVRCONN", "SYSTEM.ADMIN.COMMAND.QUEUE")
 
+        assertEquals("PRIMARY", target.queueManagerKey)
         assertEquals("QM1", target.queueManagerName)
         assertEquals("APP.SVRCONN", target.channelName)
-        assertEquals("DEV.QUEUE.2", target.queueName)
+        assertEquals("SYSTEM.ADMIN.COMMAND.QUEUE", target.queueName)
         assertEquals("mq.example.test", target.host)
         assertEquals(1414, target.port)
     }
 
     @Test
-    fun `resolve uses configured queue manager name when it differs from key`() {
-        val service = MqTopologyService(
-            TestMqTopologyConfig(
-                browseLimit = 100,
-                receiveTimeoutMs = 500,
-                queueManagers = mapOf(
-                    "PRIMARY" to TestQueueManagerConfig(
-                        host = "mq.example.test",
-                        port = 1414,
-                        channels = mapOf(
-                            "APP_SVRCONN" to TestChannelConfig(
-                                name = "APP.SVRCONN",
-                                username = Optional.empty(),
-                                password = Optional.empty(),
-                                allowedQueues = listOf("DEV.QUEUE.1")
-                            )
-                        ),
-                        name = Optional.of("QM1")
-                    )
-                )
-            )
-        )
+    fun `queue managers returns topology without allowed queue data`() {
+        val service = MqTopologyService(config)
 
-        val target = service.resolve("PRIMARY", "APP_SVRCONN", "DEV.QUEUE.1")
-
-        assertEquals("PRIMARY", target.queueManagerKey)
-        assertEquals("QM1", target.queueManagerName)
-    }
-
-    @Test
-    fun `queue managers returns topology without credentials`() {
-        val service = MqTopologyService(
-            TestMqTopologyConfig(
-                browseLimit = 100,
-                receiveTimeoutMs = 500,
-                queueManagers = mapOf(
-                    "QM1" to TestQueueManagerConfig(
-                        host = "mq.example.test",
-                        port = 1414,
-                        channels = mapOf(
-                            "APP_SVRCONN" to TestChannelConfig(
-                                name = "APP.SVRCONN",
-                                username = Optional.of("app"),
-                                password = Optional.of("secret"),
-                                allowedQueues = listOf("DEV.QUEUE.1")
-                            )
-                        )
-                    )
-                )
-            )
-        )
-
-        val queueManager = service.queueManagers().getValue("QM1")
+        val queueManager = service.queueManagers().getValue("PRIMARY")
         val channel = queueManager.channels.getValue("APP_SVRCONN")
 
+        assertEquals("PRIMARY", queueManager.key)
         assertEquals("QM1", queueManager.name)
+        assertEquals("APP_SVRCONN", channel.key)
         assertEquals("APP.SVRCONN", channel.name)
-        assertEquals(listOf("DEV.QUEUE.1"), channel.allowedQueues)
     }
 
     @Test
@@ -114,16 +67,7 @@ class MqTopologyServiceTest {
         val service = MqTopologyService(config)
 
         assertThrows(InvalidMqTargetException::class.java) {
-            service.resolve("QM1", "UNKNOWN", "DEV.QUEUE.1")
-        }
-    }
-
-    @Test
-    fun `resolve rejects queue outside configured channel`() {
-        val service = MqTopologyService(config)
-
-        assertThrows(InvalidMqTargetException::class.java) {
-            service.resolve("QM1", "APP_SVRCONN", "SYSTEM.ADMIN.COMMAND.QUEUE")
+            service.resolve("PRIMARY", "UNKNOWN", "DEV.QUEUE.1")
         }
     }
 
@@ -138,11 +82,10 @@ class MqTopologyServiceTest {
                         host = "mq.example.test",
                         port = 1414,
                         channels = mapOf(
-                            "APP_SVRCONN" to TestChannelConfig(
-                                name = "APP.SVRCONN",
+                            "OPS_SVRCONN" to TestChannelConfig(
+                                name = "OPS.SVRCONN",
                                 username = Optional.of(""),
-                                password = Optional.of(" "),
-                                allowedQueues = listOf("DEV.QUEUE.1")
+                                password = Optional.of(" ")
                             )
                         )
                     )
@@ -150,7 +93,7 @@ class MqTopologyServiceTest {
             )
         )
 
-        val target = service.resolve("QM1", "APP_SVRCONN", "DEV.QUEUE.1")
+        val target = service.resolve("QM1", "OPS_SVRCONN", "ANY.QUEUE")
 
         assertNull(target.username)
         assertNull(target.password)
@@ -182,11 +125,9 @@ data class TestQueueManagerConfig(
 data class TestChannelConfig(
     private val name: String,
     private val username: Optional<String>,
-    private val password: Optional<String>,
-    private val allowedQueues: List<String>
+    private val password: Optional<String>
 ) : ChannelView {
     override fun name() = name
     override fun username() = username
     override fun password() = password
-    override fun allowedQueues() = allowedQueues
 }
