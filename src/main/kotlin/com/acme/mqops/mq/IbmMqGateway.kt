@@ -1,15 +1,15 @@
 package com.acme.mqops.mq
 
 import com.acme.mqops.config.MqTarget
-import com.ibm.msg.client.jakarta.jms.JmsConnectionFactory
-import com.ibm.msg.client.jakarta.jms.JmsFactoryFactory
-import com.ibm.msg.client.jakarta.wmq.WMQConstants
+import com.ibm.msg.client.jms.JmsConnectionFactory
+import com.ibm.msg.client.jms.JmsFactoryFactory
+import com.ibm.msg.client.wmq.WMQConstants
 import jakarta.enterprise.context.ApplicationScoped
-import jakarta.jms.DeliveryMode
-import jakarta.jms.JMSContext
-import jakarta.jms.Message
-import jakarta.jms.Queue
-import jakarta.jms.TextMessage
+import javax.jms.DeliveryMode
+import javax.jms.JMSContext
+import javax.jms.Message
+import javax.jms.Queue
+import javax.jms.TextMessage
 
 private const val DEFAULT_RECEIVE_TIMEOUT_MS = 500L
 
