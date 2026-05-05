@@ -16,6 +16,8 @@
 | Layout | Toolbar + full-width table; Put and Clean open modal dialogs |
 | Queue allowlist | Removed — user types any queue name freely |
 | Integration testing | IBM MQ Testcontainers via `QuarkusTestResourceLifecycleManager` |
+| IBM MQ client | `com.ibm.mq:com.ibm.mq.allclient:9.4.2.1` (bundles `javax.jms`, not `jakarta.jms`) |
+| MQ provider string | Literal `"wmq_provider"` passed to `JmsFactoryFactory.getInstance()` |
 
 ---
 
@@ -37,6 +39,7 @@
 - `src/test/kotlin/com/acme/mqops/mq/MqContainerResource.kt` — `QuarkusTestResourceLifecycleManager`
 
 **Modify:**
+- `src/main/kotlin/com/acme/mqops/mq/IbmMqGateway.kt` — change all `import jakarta.jms.*` to `import javax.jms.*`; replace `WMQConstants.WMQ_PROVIDER` with the string literal `"wmq_provider"` in the `JmsFactoryFactory.getInstance()` call
 - `src/main/kotlin/com/acme/mqops/config/MqTopologyConfig.kt` — remove `allowedQueues()` from `ChannelView`; remove `MqChannelTopology.allowedQueues`
 - `src/main/kotlin/com/acme/mqops/config/MqTopologyService.kt` — remove queue allowlist validation; `resolve()` accepts any queue name
 - `src/main/resources/application.properties` — remove all `allowed-queues[n]` lines; add `quarkus.http.cors=true` for dev, add SPA static file fallback
