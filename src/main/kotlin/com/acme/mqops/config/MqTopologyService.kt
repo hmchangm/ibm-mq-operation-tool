@@ -27,8 +27,7 @@ class MqTopologyService {
                 channels = queueManager.channels().mapValues { (channelKey, channel) ->
                     MqChannelTopology(
                         key = channelKey,
-                        name = channel.name(),
-                        allowedQueues = channel.allowedQueues()
+                        name = channel.name()
                     )
                 }
             )
@@ -43,9 +42,6 @@ class MqTopologyService {
             ?: throw InvalidMqTargetException("Unknown queue manager: $queueManagerKey")
         val channel = queueManager.channels()[channelKey]
             ?: throw InvalidMqTargetException("Unknown channel: $channelKey")
-        if (!channel.allowedQueues().contains(queueName)) {
-            throw InvalidMqTargetException("Queue is not allowed for selected channel: $queueName")
-        }
 
         return MqTarget(
             queueManagerKey = queueManagerKey,
