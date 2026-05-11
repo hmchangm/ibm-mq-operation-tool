@@ -27,6 +27,38 @@ class MqOperationServiceTest {
     }
 
     @Test
+    fun `bulkDelete returns all deleted when no IDs are missing`() {
+        val audit = RecordingAuditLogger()
+        val service = MqOperationService(FakeGateway(), audit)
+
+        val result = service.bulkDelete("alice", target, listOf("ID:1", "ID:2", "ID:3"))
+
+        assertEquals(BulkDeleteResult(deleted = 3, alreadyGone = 0), result)
+        assertEquals(3, audit.entries.count { it.startsWith("delete:success") })
+    }
+
+    @Test
+    fun `bulkDelete counts already-gone IDs separately`() {
+        val audit = RecordingAuditLogger()
+        val service = MqOperationService(FakeGateway(missingIds = setOf("ID:2")), audit)
+
+        val result = service.bulkDelete("alice", target, listOf("ID:1", "ID:2", "ID:3"))
+
+        assertEquals(BulkDeleteResult(deleted = 2, alreadyGone = 1), result)
+        assertEquals(2, audit.entries.count { it.startsWith("delete:success") })
+        assertEquals(1, audit.entries.count { it.startsWith("delete:not_found") })
+    }
+
+    @Test
+    fun `bulkDelete returns all already-gone when all IDs are missing`() {
+        val service = MqOperationService(FakeGateway(missingIds = setOf("ID:1", "ID:2")), RecordingAuditLogger())
+
+        val result = service.bulkDelete("alice", target, listOf("ID:1", "ID:2"))
+
+        assertEquals(BulkDeleteResult(deleted = 0, alreadyGone = 2), result)
+    }
+
+    @Test
     fun `export calls gateway browse with max limit`() {
         val gateway = FakeGateway()
         val service = MqOperationService(gateway, RecordingAuditLogger())
@@ -142,7 +174,8 @@ class MqOperationServiceTest {
     private class FakeGateway(
         private val deleteMissing: Boolean = false,
         private val cleanCount: Int = 0,
-        private val putFailure: Exception? = null
+        private val putFailure: Exception? = null,
+        private val missingIds: Set<String> = emptySet()
     ) : MqGateway {
         var lastBrowseLimit: Int = 0
         var lastPutBody: String = ""
@@ -152,7 +185,10 @@ class MqOperationServiceTest {
             return emptyList()
         }
 
-        override fun delete(target: MqTarget, jmsMessageId: String): Boolean = !deleteMissing
+        override fun delete(target: MqTarget, jmsMessageId: String): Boolean {
+            if (jmsMessageId in missingIds) return false
+            return !deleteMissing
+        }
 
         override fun putText(target: MqTarget, body: String) {
             putFailure?.let { throw it }

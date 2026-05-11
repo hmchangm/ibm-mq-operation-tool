@@ -17,6 +17,31 @@ class MqOperationService(
 
     fun export(user: String, target: MqTarget): List<MessageRow> = gateway.browse(target, Int.MAX_VALUE)
 
+    fun bulkDelete(user: String, target: MqTarget, jmsMessageIds: List<String>): BulkDeleteResult {
+        var deleted = 0
+        var alreadyGone = 0
+        for (id in jmsMessageIds) {
+            try {
+                if (gateway.delete(target, id)) {
+                    audit.delete(user, target, id, "success")
+                    deleted++
+                } else {
+                    audit.delete(user, target, id, "not_found")
+                    alreadyGone++
+                }
+            } catch (ex: InterruptedException) {
+                Thread.currentThread().interrupt()
+                throw ex
+            } catch (ex: CancellationException) {
+                throw ex
+            } catch (ex: Exception) {
+                audit.delete(user, target, id, "failure", errorSummary(ex))
+                throw ex
+            }
+        }
+        return BulkDeleteResult(deleted, alreadyGone)
+    }
+
     fun delete(user: String, target: MqTarget, jmsMessageId: String) {
         withMqCall({ error -> audit.delete(user, target, jmsMessageId, "failure", error) }) {
             val deleted = gateway.delete(target, jmsMessageId)
@@ -62,3 +87,5 @@ class MqOperationService(
 
     private fun errorSummary(ex: Exception): String = ex.javaClass.simpleName.ifBlank { "Exception" }
 }
+
+data class BulkDeleteResult(val deleted: Int, val alreadyGone: Int)
