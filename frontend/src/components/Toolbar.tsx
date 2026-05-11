@@ -11,7 +11,9 @@ interface ToolbarProps {
   onBrowse: () => void
   onPut: () => void
   onClean: () => void
+  onExport: () => void
   browsing: boolean
+  exporting: boolean
 }
 
 export function Toolbar({
@@ -25,7 +27,9 @@ export function Toolbar({
   onBrowse,
   onPut,
   onClean,
+  onExport,
   browsing,
+  exporting,
 }: ToolbarProps) {
   const qmKeys = Object.keys(topology.queueManagers)
   const channels = queueManager
@@ -85,6 +89,9 @@ export function Toolbar({
       </button>
       <button onClick={onClean} disabled={!canAct} style={{ color: '#d33f49' }}>
         Clean…
+      </button>
+      <button onClick={onExport} disabled={!canAct || exporting}>
+        {exporting ? 'Exporting…' : 'Export'}
       </button>
     </div>
   )

@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { exportQueue } from './api/exportQueue'
 import { useMe } from './api/useMe'
 import { useTopology } from './api/useTopology'
 import { useBrowse } from './api/useBrowse'
@@ -23,6 +24,7 @@ export default function App() {
   const [showPut, setShowPut] = useState(false)
   const [showClean, setShowClean] = useState(false)
   const [deletingId, setDeletingId] = useState<string | null>(null)
+  const [exporting, setExporting] = useState(false)
 
   useEffect(() => {
     if (me.error?.message === 'unauthenticated') {
@@ -53,6 +55,17 @@ export default function App() {
   const handleDelete = (jmsMessageId: string) => {
     setDeletingId(jmsMessageId)
     del.mutate({ queueManager, channel, queue, jmsMessageId })
+  }
+
+  const handleExport = async () => {
+    setExporting(true)
+    try {
+      await exportQueue({ queueManager, channel, queue })
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Export failed')
+    } finally {
+      setExporting(false)
+    }
   }
 
   const handleQueueManagerChange = (v: string) => {
@@ -106,7 +119,9 @@ export default function App() {
         onBrowse={() => browse.mutate({ queueManager, channel, queue })}
         onPut={() => setShowPut(true)}
         onClean={() => setShowClean(true)}
+        onExport={handleExport}
         browsing={browse.isPending}
+        exporting={exporting}
       />
       <div style={{ flex: 1, overflow: 'auto' }}>
         <MessageTable rows={rows} onDelete={handleDelete} deleting={deletingId} />
