@@ -1,5 +1,6 @@
 package com.acme.mqops.web
 
+import com.acme.mqops.export.ExcelExporter
 import com.acme.mqops.config.InvalidMqTargetException
 import com.acme.mqops.config.MqTarget
 import com.acme.mqops.config.MqTopologyService
@@ -24,7 +25,8 @@ import jakarta.ws.rs.core.Response
 class MqApiResource(
     private val topology: MqTopologyService,
     private val operations: MqOperationService,
-    private val identity: SecurityIdentity
+    private val identity: SecurityIdentity,
+    private val excelExporter: ExcelExporter
 ) {
     @GET
     @Path("/me")
@@ -76,6 +78,17 @@ class MqApiResource(
     fun clean(request: CleanRequest): CleanResponse =
         withTarget(request.queueManager, request.channel, request.queue) { target ->
             CleanResponse(removed = operations.clean(user(), target))
+        }
+
+    @POST
+    @Path("/export")
+    @Produces("application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
+    fun export(request: ExportRequest): Response =
+        withTarget(request.queueManager, request.channel, request.queue) { target ->
+            val bytes = excelExporter.export(operations.export(user(), target))
+            Response.ok(bytes)
+                .header("Content-Disposition", "attachment; filename=\"export.xlsx\"")
+                .build()
         }
 
     private fun <T> withTarget(queueManager: String, channel: String, queue: String, block: (MqTarget) -> T): T =
