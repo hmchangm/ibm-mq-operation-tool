@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { exportQueue } from './api/exportQueue'
+import { BulkDeleteModal } from './components/BulkDeleteModal'
 import { useMe } from './api/useMe'
 import { useTopology } from './api/useTopology'
 import { useBrowse } from './api/useBrowse'
@@ -25,6 +26,7 @@ export default function App() {
   const [showClean, setShowClean] = useState(false)
   const [deletingId, setDeletingId] = useState<string | null>(null)
   const [exporting, setExporting] = useState(false)
+  const [showBulkDelete, setShowBulkDelete] = useState(false)
 
   useEffect(() => {
     if (me.error?.message === 'unauthenticated') {
@@ -120,6 +122,7 @@ export default function App() {
         onPut={() => setShowPut(true)}
         onClean={() => setShowClean(true)}
         onExport={handleExport}
+        onBulkDelete={() => setShowBulkDelete(true)}
         browsing={browse.isPending}
         exporting={exporting}
       />
@@ -142,6 +145,15 @@ export default function App() {
           channel={channel}
           queue={queue}
           onClose={() => setShowClean(false)}
+          onError={setError}
+        />
+      )}
+      {showBulkDelete && (
+        <BulkDeleteModal
+          queueManager={queueManager}
+          channel={channel}
+          queue={queue}
+          onClose={() => setShowBulkDelete(false)}
           onError={setError}
         />
       )}

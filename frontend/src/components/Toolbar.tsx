@@ -12,6 +12,7 @@ interface ToolbarProps {
   onPut: () => void
   onClean: () => void
   onExport: () => void
+  onBulkDelete: () => void
   browsing: boolean
   exporting: boolean
 }
@@ -28,6 +29,7 @@ export function Toolbar({
   onPut,
   onClean,
   onExport,
+  onBulkDelete,
   browsing,
   exporting,
 }: ToolbarProps) {
@@ -92,6 +94,9 @@ export function Toolbar({
       </button>
       <button onClick={onExport} disabled={!canAct || exporting}>
         {exporting ? 'Exporting…' : 'Export'}
+      </button>
+      <button onClick={onBulkDelete} disabled={!canAct}>
+        Delete by ID…
       </button>
     </div>
   )
