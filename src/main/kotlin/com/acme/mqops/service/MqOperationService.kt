@@ -15,6 +15,8 @@ class MqOperationService(
 ) {
     fun browse(user: String, target: MqTarget, limit: Int): List<MessageRow> = gateway.browse(target, limit)
 
+    fun export(user: String, target: MqTarget): List<MessageRow> = gateway.browse(target, Int.MAX_VALUE)
+
     fun delete(user: String, target: MqTarget, jmsMessageId: String) {
         withMqCall({ error -> audit.delete(user, target, jmsMessageId, "failure", error) }) {
             val deleted = gateway.delete(target, jmsMessageId)

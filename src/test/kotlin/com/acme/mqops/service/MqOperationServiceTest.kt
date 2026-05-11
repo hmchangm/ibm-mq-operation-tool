@@ -27,6 +27,16 @@ class MqOperationServiceTest {
     }
 
     @Test
+    fun `export calls gateway browse with max limit`() {
+        val gateway = FakeGateway()
+        val service = MqOperationService(gateway, RecordingAuditLogger())
+
+        service.export("alice", target)
+
+        assertEquals(Int.MAX_VALUE, gateway.lastBrowseLimit)
+    }
+
+    @Test
     fun `put writes plain text body and audits success`() {
         val audit = RecordingAuditLogger()
         val gateway = FakeGateway()
