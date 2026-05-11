@@ -1,6 +1,7 @@
 package com.acme.mqops.web
 
 import com.acme.mqops.export.ExcelExporter
+import com.acme.mqops.service.BulkDeleteResult
 import com.acme.mqops.config.InvalidMqTargetException
 import com.acme.mqops.config.MqTarget
 import com.acme.mqops.config.MqTopologyService
@@ -89,6 +90,13 @@ class MqApiResource(
             Response.ok(bytes)
                 .header("Content-Disposition", "attachment; filename=\"export.xlsx\"")
                 .build()
+        }
+
+    @POST
+    @Path("/bulk-delete")
+    fun bulkDelete(request: BulkDeleteRequest): BulkDeleteResult =
+        withTarget(request.queueManager, request.channel, request.queue) { target ->
+            operations.bulkDelete(user(), target, request.jmsMessageIds)
         }
 
     private fun <T> withTarget(queueManager: String, channel: String, queue: String, block: (MqTarget) -> T): T =

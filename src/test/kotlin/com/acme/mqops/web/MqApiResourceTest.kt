@@ -49,6 +49,17 @@ class MqApiResourceTest {
 
     @Test
     @TestSecurity(user = "alice")
+    fun `bulk-delete returns 400 for unknown queue manager`() {
+        given()
+            .contentType(ContentType.JSON)
+            .body("""{"queueManager":"UNKNOWN","channel":"APP_SVRCONN","queue":"DEV.QUEUE.1","jmsMessageIds":["ID:1"]}""")
+            .`when`().post("/api/bulk-delete")
+            .then()
+            .statusCode(400)
+    }
+
+    @Test
+    @TestSecurity(user = "alice")
     fun `export returns 400 for unknown queue manager`() {
         given()
             .contentType(ContentType.JSON)
