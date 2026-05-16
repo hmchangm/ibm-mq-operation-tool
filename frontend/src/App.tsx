@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { exportQueue } from './api/exportQueue'
 import { BulkDeleteModal } from './components/BulkDeleteModal'
+import { DeleteConfirmModal } from './components/DeleteConfirmModal'
 import { useMe } from './api/useMe'
 import { useTopology } from './api/useTopology'
 import { useBrowse } from './api/useBrowse'
@@ -25,6 +26,7 @@ export default function App() {
   const [showPut, setShowPut] = useState(false)
   const [showClean, setShowClean] = useState(false)
   const [deletingId, setDeletingId] = useState<string | null>(null)
+  const [pendingDelete, setPendingDelete] = useState<MessageRow | null>(null)
   const [exporting, setExporting] = useState(false)
   const [showBulkDelete, setShowBulkDelete] = useState(false)
 
@@ -46,17 +48,24 @@ export default function App() {
   const del = useDelete(
     () => {
       setDeletingId(null)
+      setPendingDelete(null)
       browse.mutate({ queueManager, channel, queue })
     },
     (msg) => {
       setDeletingId(null)
+      setPendingDelete(null)
       setError(msg)
     }
   )
 
-  const handleDelete = (jmsMessageId: string) => {
-    setDeletingId(jmsMessageId)
-    del.mutate({ queueManager, channel, queue, jmsMessageId })
+  const handleDelete = (row: MessageRow) => {
+    setPendingDelete(row)
+  }
+
+  const handleConfirmDelete = () => {
+    if (!pendingDelete) return
+    setDeletingId(pendingDelete.jmsMessageId)
+    del.mutate({ queueManager, channel, queue, jmsMessageId: pendingDelete.jmsMessageId })
   }
 
   const handleExport = async () => {
@@ -155,6 +164,15 @@ export default function App() {
           queue={queue}
           onClose={() => setShowBulkDelete(false)}
           onError={setError}
+        />
+      )}
+      {pendingDelete && (
+        <DeleteConfirmModal
+          row={pendingDelete}
+          queue={queue}
+          onConfirm={handleConfirmDelete}
+          onCancel={() => setPendingDelete(null)}
+          deleting={del.isPending}
         />
       )}
     </div>
