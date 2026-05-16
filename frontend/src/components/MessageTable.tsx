@@ -2,7 +2,7 @@ import type { MessageRow } from '../types'
 
 interface MessageTableProps {
   rows: MessageRow[]
-  onDelete: (jmsMessageId: string) => void
+  onDelete: (row: MessageRow) => void
   deleting: string | null
 }
 
@@ -64,7 +64,7 @@ export function MessageTable({ rows, onDelete, deleting }: MessageTableProps) {
             </td>
             <td style={{ padding: '6px 8px' }}>
               <button
-                onClick={() => onDelete(row.jmsMessageId)}
+                onClick={() => onDelete(row)}
                 disabled={deleting === row.jmsMessageId}
                 aria-label={
                   deleting === row.jmsMessageId
