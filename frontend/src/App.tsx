@@ -144,6 +144,10 @@ export default function App() {
           queueManager={queueManager}
           channel={channel}
           queue={queue}
+          onSuccess={() => {
+            setShowPut(false)
+            browse.mutate({ queueManager, channel, queue })
+          }}
           onClose={() => setShowPut(false)}
           onError={setError}
         />

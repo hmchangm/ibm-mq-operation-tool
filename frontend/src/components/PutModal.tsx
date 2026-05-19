@@ -5,13 +5,14 @@ interface PutModalProps {
   queueManager: string
   channel: string
   queue: string
+  onSuccess: () => void
   onClose: () => void
   onError: (msg: string) => void
 }
 
-export function PutModal({ queueManager, channel, queue, onClose, onError }: PutModalProps) {
+export function PutModal({ queueManager, channel, queue, onSuccess, onClose, onError }: PutModalProps) {
   const [body, setBody] = useState('')
-  const put = usePut(onClose, onError)
+  const put = usePut(onSuccess, onError)
   const titleId = 'put-modal-title'
 
   useEffect(() => {
