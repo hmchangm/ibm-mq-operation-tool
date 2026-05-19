@@ -32,4 +32,10 @@ describe('MessageTable', () => {
     render(<MessageTable rows={[row]} onDelete={vi.fn()} deleting="ID:abc123" />)
     expect(screen.getByRole('button', { name: /Deleting message/ })).toBeDisabled()
   })
+
+  it('does not show Correlation ID or Type columns', () => {
+    render(<MessageTable rows={[row]} onDelete={vi.fn()} deleting={null} />)
+    expect(screen.queryByText('Correlation ID')).not.toBeInTheDocument()
+    expect(screen.queryByText('Type')).not.toBeInTheDocument()
+  })
 })

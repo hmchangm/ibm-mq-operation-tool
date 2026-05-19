@@ -23,12 +23,6 @@ export function MessageTable({ rows, onDelete, deleting }: MessageTableProps) {
             Message ID
           </th>
           <th style={{ padding: '6px 8px', textAlign: 'left', borderBottom: '1px solid #ddd' }}>
-            Correlation ID
-          </th>
-          <th style={{ padding: '6px 8px', textAlign: 'left', borderBottom: '1px solid #ddd' }}>
-            Type
-          </th>
-          <th style={{ padding: '6px 8px', textAlign: 'left', borderBottom: '1px solid #ddd' }}>
             Preview
           </th>
           <th style={{ padding: '6px 8px', borderBottom: '1px solid #ddd' }} />
@@ -47,10 +41,6 @@ export function MessageTable({ rows, onDelete, deleting }: MessageTableProps) {
             >
               {row.jmsMessageId}
             </td>
-            <td style={{ padding: '6px 8px', fontFamily: 'monospace', fontSize: 11 }}>
-              {row.correlationId ?? '—'}
-            </td>
-            <td style={{ padding: '6px 8px' }}>{row.type}</td>
             <td
               style={{
                 padding: '6px 8px',
